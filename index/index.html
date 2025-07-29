@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Нейросеть через OpenRouter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 700px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .search-container {
+            margin-bottom: 30px;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 18px 25px;
+            font-size: 17px;
+            border: none;
+            border-radius: 50px;
+            outline: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            transition: all 0.3s ease;
+        }
+
+        #searchInput:focus {
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+            background: white;
+        }
+
+        #searchButton {
+            background: linear-gradient(135deg, #00c9ff, #92fe9d);
+            color: #1a2a6c;
+            border: none;
+            padding: 16px 40px;
+            font-size: 17px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        #searchButton:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        #searchButton:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #result {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            text-align: left;
+            min-height: 150px;
+            display: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        #resultContent {
+            line-height: 1.7;
+            color: #333;
+            font-size: 16px;
+            white-space: pre-wrap; /* Сохраняет форматирование */
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+            color: white;
+        }
+
+        .loading-spinner {
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #721c24;
+            background: #f8d7da;
+            border-left: 5px solid #f5c6cb;
+        }
+
+        .model-info {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+
+        .footer {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8em;
+            margin-top: 30px;
+        }
+
+        .api-info {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            color: white;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Нейросеть через OpenRouter</h1>
+        <div class="subtitle">Доступ к Qwen и другим ИИ моделям</div>
+        
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Введите ваш запрос..." autocomplete="off">
+            <button id="searchButton">Отправить запрос</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>Обработка запроса. Пожалуйста, подождите...</p>
+        </div>
+
+        <div id="result">
+            <div id="resultContent"></div>
+        </div>
+
+        <div class="model-info">
+            Модель: Qwen/Qwen3-235B-A22B (по умолчанию)
+        </div>
+
+        <div class="api-info">
+            Используется API: <a href="https://openrouter.ai" target="_blank" style="color: #00c9ff;">OpenRouter.ai</a><br>
+            Ключ API: sk-or-v1-...
+        </div>
+
+        <div class="footer">
+            Используя этот сервис, вы соглашаетесь с условиями использования и политикой конфиденциальности
+        </div>
+    </div>
+
+    <script>
+        // Оборачиваем весь код в анонимную асинхронную функцию или используем type="module"
+        (function() {
+            const searchInput = document.getElementById('searchInput');
+            const searchButton = document.getElementById('searchButton');
+            const resultDiv = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+            const loadingDiv = document.getElementById('loading');
+
+            // Ваш API ключ OpenRouter
+            const API_KEY = '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';
+            
+            // OpenRouter API URL
+            const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+            // Функция для отправки запроса через OpenRouter API
+            async function sendToOpenRouter(query) {
+                try {
+                    console.log('Отправка запроса к OpenRouter API:', query);
+                    
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: "qwen/qwen3-235b-a22b",
+                            messages: [
+                                { role: "user", content: query }
+                            ],
+                            max_tokens: 1000,
+                            temperature: 0.7
+                        })
+                    });
+
+                    console.log('Статус ответа:', response.status);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        console.error('Ошибка API:', errorData);
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}. Детали: ${errorData}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Полный ответ от API:', data);
+                    
+                    // Извлекаем текст ответа (формат OpenAI/OpenRouter)
+                    const content = data.choices?.[0]?.message?.content?.trim();
+                    if (content) {
+                        return content;
+                    } else {
+                        throw new Error('Ответ не содержит текста. Проверьте консоль для деталей.');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при отправке запроса:', error);
+                    throw new Error(`Ошибка подключения: ${error.message}`);
+                }
+            }
+
+            // Функция для отображения результата
+            function showResult(content, isError = false) {
+                resultContent.textContent = content; // Используем textContent для безопасности
+                resultDiv.style.display = 'block';
+                resultDiv.className = isError ? 'error' : '';
+            }
+
+            // Функция для обработки поиска
+            async function handleSearch() {
+                const query = searchInput.value.trim();
+                
+                if (!query) {
+                    showResult('Пожалуйста, введите запрос', true);
+                    return;
+                }
+
+                // Показываем загрузку
+                loadingDiv.style.display = 'block';
+                resultDiv.style.display = 'none';
+                searchButton.disabled = true;
+                searchButton.textContent = 'Обработка...';
+
+                try {
+                    const result = await sendToOpenRouter(query);
+                    showResult(result);
+                } catch (error) {
+                    showResult(`Ошибка: ${error.message}`, true);
+                } finally {
+                    // Скрываем загрузку
+                    loadingDiv.style.display = 'none';
+                    searchButton.disabled = false;
+                    searchButton.textContent = 'Отправить запрос';
+                }
+            }
+
+            // Добавляем обработчики событий после загрузки DOM
+            document.addEventListener('DOMContentLoaded', function() {
+                // Обработчики событий
+                searchButton.addEventListener('click', handleSearch);
+
+                searchInput.addEventListener('keypress', (event) => {
+                    if (event.key === 'Enter') {
+                        handleSearch();
+                    }
+                });
+
+                // Информация для отладки
+                console.log('OpenRouter API клиент инициализирован.');
+                console.log('API URL:', API_URL);
+                console.log('API Key (первые 10 символов):', API_KEY.substring(0, 10) + '...');
+                console.log('Откройте консоль разработчика (F12) для просмотра деталей.');
+            });
+        })();
+    </script>
+</body>
+</html>
